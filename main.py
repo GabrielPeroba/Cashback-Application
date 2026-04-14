@@ -5,10 +5,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 
-# É esta variável 'app' que o Render estava procurando!
 app = FastAPI()
 
-# Configuração de CORS (Permite que o frontend se conecte)
+# Configuração de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -17,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pega a URL do banco de dados das variáveis de ambiente do Render
 DB_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
@@ -27,6 +25,35 @@ def get_db_connection():
     except Exception as e:
         print(f"Erro ao conectar ao banco: {e}")
         return None
+
+# =========================================================
+# NOVO: Função que cria a tabela automaticamente no banco!
+# =========================================================
+def init_db():
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS cashback_history (
+                        id SERIAL PRIMARY KEY,
+                        ip_address VARCHAR(45) NOT NULL,
+                        is_vip BOOLEAN NOT NULL,
+                        purchase_value NUMERIC(10, 2) NOT NULL,
+                        cashback_value NUMERIC(10, 2) NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+            conn.commit()
+            print("Tabela verificada/criada com sucesso!")
+        except Exception as e:
+            print(f"Erro ao criar tabela: {e}")
+        finally:
+            conn.close()
+
+# Executa a função assim que o servidor liga
+init_db()
+# =========================================================
 
 class CompraRequest(BaseModel):
     valor_compra: float
