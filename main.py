@@ -25,6 +25,13 @@ def get_db_connection():
     except Exception as e:
         print(f"Erro ao conectar ao banco: {e}")
         return None
+    
+def obter_ip(request: Request):
+    x_forwarded = request.headers.get('X-Forwarded-For')
+    if x_forwarded:
+        # Se vier uma lista como "IP_CLIENTE, IP_PROXY", pegamos só o primeiro!
+        return x_forwarded.split(',')[0].strip()
+    return request.client.host
 
 # =========================================================
 # NOVO: Função que cria a tabela automaticamente no banco!
@@ -72,7 +79,7 @@ def calcular_cashback(valor_final_compra: float, is_vip: bool) -> float:
 
 @app.post("/api/calcular")
 async def processar_compra(compra: CompraRequest, request: Request):
-    client_ip = request.headers.get('X-Forwarded-For', request.client.host)
+    client_ip = obter_ip(request)
     cashback_final = calcular_cashback(compra.valor_compra, compra.is_vip)
     
     conn = get_db_connection()
@@ -97,7 +104,7 @@ async def processar_compra(compra: CompraRequest, request: Request):
 
 @app.get("/api/historico")
 async def obter_historico(request: Request):
-    client_ip = request.headers.get('X-Forwarded-For', request.client.host)
+    client_ip = obter_ip(request)
     
     conn = get_db_connection()
     if not conn:
