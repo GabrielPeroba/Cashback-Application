@@ -118,3 +118,29 @@ async def obter_historico(request: Request):
             return {"ip": client_ip, "historico": historico}
     finally:
         conn.close()
+
+@app.get("/api/setup")
+def setup_database():
+    """Rota temporária para forçar a criação da tabela no banco de dados"""
+    conn = get_db_connection()
+    if not conn:
+        return {"status": "erro", "mensagem": "Falha de conexão. Verifique se a variável DATABASE_URL está correta no Render."}
+    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cashback_history (
+                    id SERIAL PRIMARY KEY,
+                    ip_address VARCHAR(45) NOT NULL,
+                    is_vip BOOLEAN NOT NULL,
+                    purchase_value NUMERIC(10, 2) NOT NULL,
+                    cashback_value NUMERIC(10, 2) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+        conn.commit()
+        return {"status": "sucesso", "mensagem": "A tabela cashback_history foi criada e está pronta para uso!"}
+    except Exception as e:
+        return {"status": "erro_banco", "detalhe": str(e)}
+    finally:
+        conn.close()
